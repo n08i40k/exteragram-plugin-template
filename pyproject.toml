@@ -2,6 +2,8 @@
 name = "exteragram-plugin-template"
 version = "0.1.0"
 description = "extera/Ayu-Gram template plugin"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.14"
 dependencies = [
     "exteragram-utils>=0.1.3",

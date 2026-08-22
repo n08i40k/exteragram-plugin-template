@@ -43,3 +43,7 @@ just embed               # -> dist/<plugin-id>.py с вшитым DEX
 
 - `just loc` — перегенерировать i18n-файлы без полной пересборки DEX.
 - `just gen-stubs <rt.jar> <android.jar>` — стабы для автодополнения в Python.
+
+## Лицензия
+
+[MIT](LICENSE)
