@@ -3,6 +3,7 @@ DEBUG_DEX_PATH := `realpath -m build/outputs/dex/debug/classes.dex`
 
 PLUGIN_PY := `grep -ls '^__id__ = ' -- *.py | head -n1`
 DIST_PY := "dist/" + file_name(PLUGIN_PY)
+DIST_PLUGIN := "dist/" + file_stem(PLUGIN_PY) + ".plugin"
 
 # fail early if the tools a recipe needs are not installed
 [private]
@@ -28,17 +29,31 @@ dex: (_require "java")
 loc: (_require "java")
     ./gradlew generateI18n4kFiles
 
-# build the release DEX
-ci: (_require "java")
-    ./gradlew buildDexRelease
-    cp {{ RELEASE_DEX_PATH }} ./
-
 # embed a DEX (default: release) into a distributable copy of the plugin .py
-embed DEX_PATH=RELEASE_DEX_PATH OUTPUT=DIST_PY: (_require "uv")
+embed DEX_PATH=RELEASE_DEX_PATH OUTPUT=DIST_PY SOURCE=PLUGIN_PY: (_require "uv")
     #!/usr/bin/env bash
     set -euo pipefail
     mkdir -p "$(dirname '{{ OUTPUT }}')"
-    uv run python tools/embed_dex.py '{{ DEX_PATH }}' '{{ PLUGIN_PY }}' '{{ OUTPUT }}'
+    uv run python tools/embed_dex.py '{{ DEX_PATH }}' '{{ SOURCE }}' '{{ OUTPUT }}'
+
+# stamp the version, build the release DEX and embed it into a distributable plugin
+ci-release VERSION OUTPUT=DIST_PLUGIN: (_require "java" "uv")
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' EXIT
+
+    cp '{{ PLUGIN_PY }}' "$tmp/{{ file_name(PLUGIN_PY) }}"
+    cp pyproject.toml "$tmp/pyproject.toml"
+
+    uv run python scripts/prepare_release.py \
+        --version '{{ VERSION }}' \
+        --plugin-file "$tmp/{{ file_name(PLUGIN_PY) }}" \
+        --pyproject-file "$tmp/pyproject.toml"
+
+    ./gradlew buildDexRelease
+    just embed '{{ RELEASE_DEX_PATH }}' '{{ OUTPUT }}' "$tmp/{{ file_name(PLUGIN_PY) }}"
 
 # watch the plugin source + debug DEX and live-reload on device via extera dev-sync
 watch *ARGS: (_require "uv" "adb")

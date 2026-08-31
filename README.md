@@ -33,9 +33,10 @@ just watch   # live-reload на подключённом устройстве
 ## Сборка релиза
 
 ```sh
-just ci                  # release DEX
-just embed               # -> dist/<plugin-id>.py с вшитым DEX
+just ci-release 1.2.3    # -> dist/<plugin-id>.plugin: версия, release-DEX и упаковка
 ```
+
+`just embed` вшивает уже собранный release-DEX в `dist/<plugin-id>.py`, не трогая версию.
 
 Либо workflow **Release** в GitHub Actions (запуск вручную, версия в формате `x.x.x`).
 
