@@ -14,6 +14,8 @@ from org.telegram.messenger import ApplicationLoader, LocaleController
 from java.nio import ByteBuffer
 from dalvik.system import InMemoryDexClassLoader
 import os
+import base64
+import lzma
 from java.lang import Class, String, Long
 from typing import Optional, Any, cast
 
@@ -101,7 +103,7 @@ def _dialog_id_of(obj: Any) -> Optional[int]:
 
 
 class JvmPluginBridge:
-    """Loads classes.dex embedded (as a hex comment) into this very .py file."""
+    """Loads classes.dex embedded (as a base64 comment) into this very .py file."""
 
     klass: Optional[Class]
 
@@ -165,32 +167,39 @@ class JvmPluginBridge:
             self.plugin.log("Failed to read plugin source for embedded DEX")
             return None
 
+        payload = bytearray()
+        decompressor = lzma.LZMADecompressor()
         collecting = False
-        hex_parts: list[str] = []
+        completed = False
 
-        for line in source.splitlines():
-            stripped = line.strip()
+        try:
+            for line in source.splitlines():
+                stripped = line.strip()
 
-            if stripped == DEX_COMMENT_BEGIN:
-                collecting = True
-                continue
+                if not collecting:
+                    collecting = stripped == DEX_COMMENT_BEGIN
+                    continue
 
-            if stripped == DEX_COMMENT_END:
-                break
+                if stripped == DEX_COMMENT_END:
+                    completed = True
+                    break
 
-            if collecting and stripped.startswith("#"):
-                hex_parts.append(stripped[1:].strip())
+                if stripped.startswith("#"):
+                    chunk = base64.b64decode(stripped[1:].strip())
+                    payload += decompressor.decompress(chunk)
+        except (ValueError, lzma.LZMAError) as e:
+            self.plugin.log_exception("Failed to decode embedded DEX", e)
+            return None
 
-        hex_data = "".join(hex_parts)
-        if not hex_data:
+        if completed and not decompressor.eof:
+            self.plugin.log("Embedded DEX payload is truncated")
+            return None
+
+        if not completed or not payload:
             self.plugin.log("Embedded DEX payload is empty")
             return None
 
-        try:
-            return bytes.fromhex(hex_data)
-        except ValueError as e:
-            self.plugin.log_exception("Failed to decode embedded DEX", e)
-            return None
+        return bytes(payload)
 
 
 class ChatContextMenu:
