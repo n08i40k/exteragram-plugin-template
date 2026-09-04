@@ -78,9 +78,9 @@ update-apk PATH_TO_APK: (_require "dex2jar" "jbang" "git")
     jbang ./tools/FixTelegramJar.java "$tmp/Telegram.jar" "$tmp/Telegram-compile.jar"
 
     # copy generated jars
-    mkdir ./libs/
     cp "$tmp/Telegram.jar" ./libs/Telegram.jar
     cp "$tmp/Telegram-compile.jar" ./libs/Telegram-compile.jar
+    mkdir -p ./libs/
 
     # and commit them
     git add -N -- ./libs/Telegram.jar ./libs/Telegram-compile.jar
