@@ -10,21 +10,21 @@
 - `src/main/kotlin/...` — основная логика (хуки, пункты меню, настройки, i18n).
 - `tools/embed_dex.py` — вшивает собранный `classes.dex` в копию `.py`.
 - `tools/dev_watch.py` — live-reload на устройстве через `extera dev-sync` (adb).
-- `libs/Telegram*.jar` — классы хост-приложения (в git через LFS); генерируются
-  из APK рецептом `just update-apk`.
+- `libs/Telegram.jar` — классы хост-приложения, распакованные из APK рецептом
+  `just update-apk` (лежит в git через LFS).
+- `libs/Telegram.stripped.jar` — compile-classpath: тот же jar с восстановленными
+  вложенными классами и без пакетов, которые приходят из Gradle-зависимостей.
+  Собирается локально из `libs/Telegram.jar` — `just dex` делает это сам.
 
 ## Требования
 
-`java` (JDK 21), `uv`, `just`, `adb`. Для `update-apk` дополнительно `dex2jar` и `jbang`.
+`java` (JDK 21), `uv`, `just`, `adb`, `jbang`. Для `update-apk` дополнительно `dex2jar`.
 
 ## Быстрый старт
 
 ```sh
 # переименовать шаблон под себя: пакет, id и отображаемое имя
 just init com.example.myplugin my-plugin "My Plugin"
-
-# положить libs/Telegram.jar и Telegram-compile.jar (из APK хоста)
-just update-apk /path/to/exteragram.apk
 
 just dex     # debug-сборка DEX
 just watch   # live-reload на подключённом устройстве
@@ -44,6 +44,10 @@ just ci-release 1.2.3    # -> dist/<plugin-id>.plugin: версия, release-DEX
 
 - `just loc` — перегенерировать i18n-файлы без полной пересборки DEX.
 - `just gen-stubs <rt.jar> <android.jar>` — стабы для автодополнения в Python.
+- `just update-apk <apk>` — обновить `libs/Telegram.jar` из APK хоста и закоммитить его.
+- `just strip-telegram-jar` — пересобрать `libs/Telegram.stripped.jar` принудительно;
+  `just dex` и `just ci-release` и так пересобирают его, когда он старше
+  `libs/Telegram.jar` или `tools/FixTelegramJar.java`.
 
 ## Лицензия
 
