@@ -1,23 +1,24 @@
 # fmt: off
-from android.webkit import ValueCallback
-from java import dynamic_proxy
-from org.telegram.ui.ActionBar import AlertDialog
-from client_utils import get_last_fragment
-from ui.bulletin import BulletinHelper
-from android_utils import run_on_ui_thread, copy_to_clipboard
-import traceback
-from android.util import Log
-import threading
-from ui.settings import Header, Text
-from base_plugin import MenuItemType, MenuItemData, BasePlugin
-from org.telegram.messenger import ApplicationLoader, LocaleController
-from java.nio import ByteBuffer
-from dalvik.system import InMemoryDexClassLoader
-import os
 import base64
 import lzma
-from java.lang import Class, String, Long
-from typing import Optional, Any, cast
+import os
+import threading
+import traceback
+from typing import Any, Optional, cast
+
+from android.util import Log
+from android.webkit import ValueCallback
+from android_utils import copy_to_clipboard, run_on_ui_thread
+from base_plugin import BasePlugin, MenuItemData, MenuItemType
+from client_utils import get_last_fragment
+from dalvik.system import InMemoryDexClassLoader
+from java import dynamic_proxy
+from java.lang import Class, Long, String
+from java.nio import ByteBuffer
+from org.telegram.messenger import ApplicationLoader, LocaleController
+from org.telegram.ui.ActionBar import AlertDialog
+from ui.bulletin import BulletinHelper
+from ui.settings import Header, Text
 
 __id__ = "exteragram-plugin-template"
 __name__ = "exteraGram plugin template"
