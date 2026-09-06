@@ -6,8 +6,7 @@ DIST_PY := "dist/" + file_name(PLUGIN_PY)
 DIST_PLUGIN := "dist/" + file_stem(PLUGIN_PY) + ".plugin"
 
 EXTERNAL_LIBS_DIR := "./libs"
-SOURCE_TELEGRAM_JAR_PATH := shell(f"realpath -m {{ EXTERNAL_LIBS_DIR }}/Telegram.jar")
-TARGET_TELEGRAM_JAR_PATH := shell(f"realpath -m {{ EXTERNAL_LIBS_DIR }}/Telegram.stripped.jar")
+TELEGRAM_JAR_PATH := shell(f"realpath -m {{ EXTERNAL_LIBS_DIR }}/Telegram.jar")
 
 # fail early if the tools a recipe needs are not installed
 [private]
@@ -25,22 +24,8 @@ _require +COMMANDS:
         exit 1
     fi
 
-# regenerate the compile classpath jar when it is missing or older than its inputs
-[private]
-_ensure-telegram-jar:
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if [ -f '{{ TARGET_TELEGRAM_JAR_PATH }}' ] \
-        && [ '{{ TARGET_TELEGRAM_JAR_PATH }}' -nt '{{ SOURCE_TELEGRAM_JAR_PATH }}' ] \
-        && [ '{{ TARGET_TELEGRAM_JAR_PATH }}' -nt ./tools/FixTelegramJar.java ]; then
-        exit 0
-    fi
-
-    just strip-telegram-jar
-
 # build dex in debug mode
-dex: (_require "java") _ensure-telegram-jar
+dex: (_require "java")
     ./gradlew buildDexDebug
 
 # generate i18n files (use added lines without full dex rebuild)
@@ -55,7 +40,7 @@ embed DEX_PATH=RELEASE_DEX_PATH OUTPUT=DIST_PY SOURCE=PLUGIN_PY: (_require "uv")
     uv run python tools/embed_dex.py '{{ DEX_PATH }}' '{{ SOURCE }}' '{{ OUTPUT }}'
 
 # stamp the version, build the release DEX and embed it into a distributable plugin
-ci-release VERSION OUTPUT=DIST_PLUGIN: (_require "java" "uv") _ensure-telegram-jar
+ci-release VERSION OUTPUT=DIST_PLUGIN: (_require "java" "uv")
     #!/usr/bin/env bash
     set -euo pipefail
 
@@ -77,8 +62,8 @@ ci-release VERSION OUTPUT=DIST_PLUGIN: (_require "java" "uv") _ensure-telegram-j
 watch *ARGS: (_require "uv" "adb")
     uv run python tools/dev_watch.py '{{ PLUGIN_PY }}' '{{ DEBUG_DEX_PATH }}' {{ ARGS }}
 
-# generate libs/Telegram[.stripped].jar from an updated extera/Ayu-Gram apk
-update-apk PATH_TO_APK: (_require "dex2jar" "jbang" "git")
+# generate libs/Telegram.jar from an updated Tele/extera/Ayu-Gram apk
+update-apk PATH_TO_APK: (_require "dex2jar" "git")
     #!/usr/bin/env bash
     set -veuo pipefail
 
@@ -92,35 +77,17 @@ update-apk PATH_TO_APK: (_require "dex2jar" "jbang" "git")
     # convert apk to jar
     dex2jar -f -o "$tmp/Telegram.jar" "$tmp/Telegram.apk"
 
-    # fix class inheritance and exclude unneeded packages
-    jbang ./tools/FixTelegramJar.java "$tmp/Telegram.jar" "$tmp/Telegram.stripped.jar"
+    # copy generated jar
+    mkdir -p {{ EXTERNAL_LIBS_DIR }}
+    cp "$tmp/Telegram.jar" {{ TELEGRAM_JAR_PATH }}
 
-    # copy generated jars
-    mkdir -p ./libs/
-    cp "$tmp/Telegram.jar" {{ SOURCE_TELEGRAM_JAR_PATH }}
-    cp "$tmp/Telegram.stripped.jar" {{ TARGET_TELEGRAM_JAR_PATH }}
-
-    # and commit them
-    git add -N -- {{ SOURCE_TELEGRAM_JAR_PATH }}
-    git commit -m "chore: bump telegram version" -- {{ SOURCE_TELEGRAM_JAR_PATH }}
-
-# re-generate the compile classpath jar (libs/Telegram.stripped.jar) from libs/Telegram.jar
-strip-telegram-jar: (_require "jbang")
-    #!/usr/bin/env bash
-    set -euo pipefail
-
-    if [ ! -f "{{ SOURCE_TELEGRAM_JAR_PATH }}" ]; then
-      echo "{{ SOURCE_TELEGRAM_JAR_PATH }} is not found!" >&2
-      echo "Use \"just update-apk PATH_TO_APK\" to generate it." >&2
-      exit 1
-    fi
-
-    # fix class inheritance and exclude unneeded packages
-    jbang ./tools/FixTelegramJar.java {{ SOURCE_TELEGRAM_JAR_PATH }} {{ TARGET_TELEGRAM_JAR_PATH }}
+    # and commit it
+    git add -N -- {{ TELEGRAM_JAR_PATH }}
+    git commit -m "chore: bump telegram version" -- {{ TELEGRAM_JAR_PATH }}
 
 # generate stubs for python
 gen-stubs PATH_TO_RT_JAR PATH_TO_ANDROID_JAR: (_require "java2pyi")
-    java2pyi {{ PATH_TO_RT_JAR }} {{ PATH_TO_ANDROID_JAR }} ./libs/Telegram.jar -o stubs/
+    java2pyi {{ PATH_TO_RT_JAR }} {{ PATH_TO_ANDROID_JAR }} {{ TELEGRAM_JAR_PATH }} -o stubs/
 
 # rename plugin package/id/name and move sources (e.g. just rename com.example.myplugin my-plugin "My Plugin")
 init NEW_PACKAGE NEW_ID NEW_NAME: (_require "uv")
@@ -185,6 +152,7 @@ init NEW_PACKAGE NEW_ID NEW_NAME: (_require "uv")
 
     # plugin metadata
     sed -i "s|^__name__ = \".*\"$|__name__ = \"${new_name}\"|" "$old_py"
+    sed -i "s|^\( *pluginName = \)\".*\"$|\1\"${new_name}\"|" build.gradle.kts
     sed -i "s|^rootProject.name = \".*\"$|rootProject.name = \"${new_name}\"|" settings.gradle.kts
     sed -i "s|^name = \".*\"$|name = \"${new_id}\"|" pyproject.toml
 

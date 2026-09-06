@@ -1,4 +1,6 @@
 pluginManagement {
+    includeBuild("../extera-plugin")
+
     repositories {
         google {
             content {

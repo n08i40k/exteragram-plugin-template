@@ -8,17 +8,20 @@
 - `<plugin-id>.py` — сам плагин: метаданные, i18n, загрузка встроенного DEX
   через `InMemoryDexClassLoader` и вызов Kotlin-класса `Plugin`.
 - `src/main/kotlin/...` — основная логика (хуки, пункты меню, настройки, i18n).
+- Gradle-плагин `io.github.n08i40k.extera` собирает Kotlin в шейженный jar и
+  прогоняет его через R8: задачи `buildDexDebug` / `buildDexRelease` кладут
+  результат в `dist/dex/<variant>/classes.dex`.
 - `tools/embed_dex.py` — вшивает собранный `classes.dex` в копию `.py`.
 - `tools/dev_watch.py` — live-reload на устройстве через `extera dev-sync` (adb).
 - `libs/Telegram.jar` — классы хост-приложения, распакованные из APK рецептом
-  `just update-apk` (лежит в git через LFS).
-- `libs/Telegram.stripped.jar` — compile-classpath: тот же jar с восстановленными
-  вложенными классами и без пакетов, которые приходят из Gradle-зависимостей.
-  Собирается локально из `libs/Telegram.jar` — `just dex` делает это сам.
+  `just update-apk` (лежит в git через LFS). Gradle-плагин сам чинит в нём
+  вложенные классы и выкидывает пакеты, приходящие из Gradle-зависимостей,
+  прежде чем положить его в compile-classpath.
 
 ## Требования
 
-`java` (JDK 21), `uv`, `just`, `adb`, `jbang`. Для `update-apk` дополнительно `dex2jar`.
+`java` (JDK 21), `uv`, `just`, `adb`. Для `update-apk` дополнительно `dex2jar`,
+для `gen-stubs` — `java2pyi`.
 
 ## Быстрый старт
 
@@ -45,9 +48,6 @@ just ci-release 1.2.3    # -> dist/<plugin-id>.plugin: версия, release-DEX
 - `just loc` — перегенерировать i18n-файлы без полной пересборки DEX.
 - `just gen-stubs <rt.jar> <android.jar>` — стабы для автодополнения в Python.
 - `just update-apk <apk>` — обновить `libs/Telegram.jar` из APK хоста и закоммитить его.
-- `just strip-telegram-jar` — пересобрать `libs/Telegram.stripped.jar` принудительно;
-  `just dex` и `just ci-release` и так пересобирают его, когда он старше
-  `libs/Telegram.jar` или `tools/FixTelegramJar.java`.
 
 ## Лицензия
 

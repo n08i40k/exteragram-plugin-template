@@ -87,9 +87,6 @@ jobs:
       - name: Set up just
         uses: extractions/setup-just@v3
 
-      - name: Set up jbang
-        uses: jbangdev/setup-jbang@main
-
       - name: Bump plugin version
         env:
           VERSION: ${{ inputs.version }}

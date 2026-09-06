@@ -1,7 +1,6 @@
 # generated
 /dist
 /stubs
-/libs/Telegram.stripped.jar
 
 # Python
 __pycache__/
@@ -13,10 +12,7 @@ wheels/
 
 # Kotlin
 /build
-/buildSrc/build
-
 /.kotlin/
-/buildSrc/.kotlin
 
 # IDEA
 *.iml
